@@ -4,9 +4,15 @@ import os
 from datetime import datetime
 import json
 from pathlib import Path
-from tevkifat import tevkifat_kontrol
 import logging
 import traceback
+import re
+from functools import lru_cache
+import unicodedata
+from typing import Dict, Any, Optional, Union, List
+
+# View fonksiyonlarını import et
+from views import musteri_ekle_view, musteri_sil_view, veri_yukle_view, analiz_yap_view
 
 # Logging ayarları
 logging.basicConfig(
@@ -16,85 +22,235 @@ logging.basicConfig(
     filemode='a'
 )
 
-class TevkifatApp:
-    def __init__(self):
-        self.config_file = "config.json"
-        self.load_config()
-        self.setup_folders()
+class FileHandler:
+    """Dosya işlemleri için yardımcı sınıf"""
+    
+    @staticmethod
+    def read_excel_file(file) -> Optional[pd.DataFrame]:
+        """Excel dosyalarını oku (XLS, XLSX)"""
+        try:
+            # Dosyayı başa sar
+            file.seek(0)
+            file_content = file.read()
+            file.seek(0)
+            
+            if file.name.endswith('.xls'):
+                # XLS dosyaları için xlrd kullan
+                import xlrd
+                book = xlrd.open_workbook(file_contents=file_content)
+                sheet = book.sheet_by_index(0)
+                data = []
+                headers = [str(cell.value) for cell in sheet.row(0)]
+                
+                for row_idx in range(1, sheet.nrows):
+                    row_data = {}
+                    for col_idx, header in enumerate(headers):
+                        cell = sheet.cell(row_idx, col_idx)
+                        if cell.ctype == xlrd.XL_CELL_DATE:
+                            value = xlrd.xldate.xldate_as_datetime(cell.value, book.datemode)
+                        else:
+                            value = cell.value
+                        row_data[header] = value
+                    data.append(row_data)
+                
+                return pd.DataFrame(data)
+            elif file.name.endswith('.xlsx'):
+                # XLSX dosyaları için pandas kullan
+                return pd.read_excel(file)
+            else:
+                # XLSX dosyaları için openpyxl kullan
+                import tempfile
+                import os
+                
+                # Geçici dosya oluştur
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as temp_file:
+                    temp_file.write(file_content)
+                    temp_path = temp_file.name
+                
+                try:
+                    df = pd.read_excel(temp_path, engine='openpyxl')
+                    return df
+                except Exception as e:
+                    logging.error(f"Excel okuma hatası: {str(e)}")
+                    raise ValueError(f"Excel dosyası okunamadı: {str(e)}")
+                finally:
+                    # Geçici dosyayı temizle
+                    if os.path.exists(temp_path):
+                        os.unlink(temp_path)
+                        
+        except Exception as e:
+            logging.error(f"Excel okuma hatası: {str(e)}")
+            raise ValueError(f"Excel dosyası okunamadı: {str(e)}")
+
+    @staticmethod
+    def save_excel_file(df: pd.DataFrame, output_path: str) -> None:
+        """Excel dosyasını kaydet"""
+        try:
+            with pd.ExcelWriter(output_path, engine='openpyxl', mode='w') as writer:
+                df.to_excel(writer, index=False, sheet_name='Veri')
+                worksheet = writer.sheets['Veri']
+                
+                # Sütun genişliklerini ayarla
+                for idx, col in enumerate(df.columns):
+                    max_length = max(
+                        df[col].astype(str).apply(len).max(),
+                        len(str(col))
+                    ) + 2
+                    col_letter = ''
+                    temp = idx
+                    while temp >= 0:
+                        col_letter = chr(65 + (temp % 26)) + col_letter
+                        temp = (temp // 26) - 1
+                    worksheet.column_dimensions[col_letter].width = min(max_length, 50)
+        except Exception as e:
+            logging.error(f"Excel kaydetme hatası: {str(e)}")
+            raise ValueError(f"Excel dosyası kaydedilemedi: {str(e)}")
+
+    @staticmethod
+    def read_csv_file(file) -> pd.DataFrame:
+        """CSV dosyalarını oku"""
+        try:
+            # Dosyayı başa sar
+            file.seek(0)
+            return pd.read_csv(file)
+        except Exception as e:
+            logging.error(f"CSV okuma hatası: {str(e)}")
+            raise ValueError(f"CSV dosyası okunamadı: {str(e)}")
+
+class DataProcessor:
+    """Veri işleme ve analiz sınıfı"""
+    
+    @staticmethod
+    @lru_cache(maxsize=1000)
+    def tevkifat_kontrol(fatura_metni: str, detayli_rapor: bool = False) -> Union[bool, Dict[str, Any]]:
+        """Tevkifat riski analizi"""
+        try:
+            with open("anahtar_kelimeler.json", 'r', encoding='utf-8') as f:
+                anahtar_kelimeler = json.load(f)
+                kelime_gruplari = anahtar_kelimeler.pop("Özel Gruplar", [])
+                for kategori, regex_listesi in anahtar_kelimeler.items():
+                    anahtar_kelimeler[kategori] = [re.compile(r, re.IGNORECASE) for r in regex_listesi]
+        except Exception as e:
+            logging.error(f"Anahtar kelimeler yükleme hatası: {str(e)}")
+            return False
+
+        fatura_metni = str(fatura_metni).lower()
+        sonuc = {"risk_skoru": 0, "eslesmeler": {}}
+
+        # Kelime grupları kontrolü
+        for grup in kelime_gruplari:
+            if re.search(grup, fatura_metni, re.IGNORECASE):
+                sonuc["eslesmeler"].setdefault("Özel Grup", []).append(grup)
+                sonuc["risk_skoru"] += 3
+
+        # Kategori bazlı kontrol
+        for kategori, regex_listesi in anahtar_kelimeler.items():
+            for regex in regex_listesi:
+                if regex.search(fatura_metni):
+                    sonuc["eslesmeler"].setdefault(kategori, []).append(regex.pattern.strip(r"\b"))
+                    sonuc["risk_skoru"] += 1
+
+        # Risk seviyesi belirleme
+        risk_seviyeleri = {
+            8: "Çok Yüksek Risk",
+            5: "Yüksek Risk",
+            3: "Orta Risk",
+            0: "Düşük Risk"
+        }
         
-    def load_config(self):
+        sonuc["uyari_seviyesi"] = next(
+            (seviye for esik, seviye in sorted(risk_seviyeleri.items(), reverse=True)
+             if sonuc["risk_skoru"] >= esik),
+            "Düşük Risk"
+        )
+
+        return sonuc if detayli_rapor else bool(sonuc["eslesmeler"])
+
+class ConfigManager:
+    """Konfigürasyon yönetimi sınıfı"""
+    
+    def __init__(self, config_file: str = "config.json"):
+        self.config_file = config_file
+        self.config = self.load_config()
+        self.setup_folders()
+
+    def load_config(self) -> Dict[str, Any]:
+        """Konfigürasyon dosyasını yükle"""
         try:
             if os.path.exists(self.config_file):
                 with open(self.config_file, 'r', encoding='utf-8') as f:
-                    self.config = json.load(f)
-            else:
-                self.config = {
-                    "musteriler": {},
-                    "column_mappings": {}
-                }
-                self.save_config()
+                    return json.load(f)
+            return {"musteriler": {}, "column_mappings": {}}
         except Exception as e:
             logging.error(f"Konfig yükleme hatası: {str(e)}")
-            st.error(f"Konfig yükleme hatası: {str(e)}")
-            self.config = {"musteriler": {}, "column_mappings": {}}
+            return {"musteriler": {}, "column_mappings": {}}
 
-    def save_config(self):
+    def save_config(self) -> None:
+        """Konfigürasyonu kaydet"""
         try:
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=4, ensure_ascii=False)
         except Exception as e:
             logging.error(f"Konfig kaydetme hatası: {str(e)}")
-            st.error(f"Konfig kaydetme hatası: {str(e)}")
+            raise
 
-    def setup_folders(self):
+    def setup_folders(self) -> None:
+        """Gerekli klasörleri oluştur"""
         Path("data").mkdir(exist_ok=True)
         for musteri_id in self.config["musteriler"]:
             Path(f"data/{musteri_id}").mkdir(exist_ok=True)
 
-    def musteri_ekle(self, musteri_adi):
+class TevkifatAnalyzer:
+    """Ana analiz sınıfı"""
+    
+    def __init__(self):
+        self.config_manager = ConfigManager()
+        self.file_handler = FileHandler()
+        self.data_processor = DataProcessor()
+
+    def musteri_ekle(self, musteri_adi: str) -> Optional[str]:
+        """Yeni müşteri ekle"""
         try:
-            musteri_id = str(len(self.config["musteriler"]) + 1)
-            self.config["musteriler"][musteri_id] = {
+            musteri_id = str(len(self.config_manager.config["musteriler"]) + 1)
+            self.config_manager.config["musteriler"][musteri_id] = {
                 "ad": musteri_adi,
                 "eklenme_tarihi": datetime.now().strftime("%Y-%m-%d")
             }
             Path(f"data/{musteri_id}").mkdir(exist_ok=True)
-            self.save_config()
+            self.config_manager.save_config()
             return musteri_id
         except Exception as e:
             logging.error(f"Müşteri ekleme hatası: {str(e)}")
-            st.error(f"Müşteri ekleme hatası: {str(e)}")
             return None
 
-    def musteri_sil(self, musteri_id):
+    def musteri_sil(self, musteri_id: str) -> bool:
+        """Müşteri sil"""
         try:
-            del self.config["musteriler"][musteri_id]
-            if musteri_id in self.config["column_mappings"]:
-                del self.config["column_mappings"][musteri_id]
-            self.save_config()
+            del self.config_manager.config["musteriler"][musteri_id]
+            if musteri_id in self.config_manager.config["column_mappings"]:
+                del self.config_manager.config["column_mappings"][musteri_id]
+            self.config_manager.save_config()
             return True
         except Exception as e:
             logging.error(f"Müşteri silme hatası: {str(e)}")
-            st.error(f"Müşteri silme hatası: {str(e)}")
             return False
 
-    def veri_yukle(self, musteri_id, file, mapping):
+    def veri_yukle(self, musteri_id: str, file, mapping: Dict[str, str]) -> Optional[pd.DataFrame]:
+        """Veri yükleme ve analiz"""
         try:
             # Dosya okuma
-            if file.name.endswith('.xlsx'):
-                df = pd.read_excel(file)
+            if file.name.endswith(('.xlsx', '.xls')):
+                df = self.file_handler.read_excel_file(file)
             else:
-                df = pd.read_csv(file)
+                df = self.file_handler.read_csv_file(file)
 
-            # Boş mapping değerlerini kontrol et
+            # Mapping kontrol
             empty_mappings = [col for col, mapped in mapping.items() if not mapped]
             if empty_mappings:
                 raise ValueError(f"Lütfen şu sütunları eşleştirin: {', '.join(empty_mappings)}")
 
-            # Mapping'i ters çevir (hedef_sutun: kaynak_sutun şeklinde)
-            reverse_mapping = {v: k for k, v in mapping.items()}
-            
             # Mapping uygula
+            reverse_mapping = {v: k for k, v in mapping.items()}
             df = df.rename(columns=reverse_mapping)
 
             # Gerekli sütunları kontrol et
@@ -103,33 +259,140 @@ class TevkifatApp:
             if missing_columns:
                 raise ValueError(f"Eksik sütunlar: {', '.join(missing_columns)}")
 
-            # Tarih sütununu düzenle
-            try:
-                df['tarih'] = pd.to_datetime(df['tarih'])
-            except Exception as e:
-                raise ValueError("Tarih sütunu uygun formatta değil. Lütfen tarih formatını kontrol edin.")
-
-            # Tutar sütununu sayısal formata çevir
-            try:
-                df['tutar'] = pd.to_numeric(df['tutar'].astype(str).str.replace(',', '.'), errors='coerce')
-            except Exception as e:
-                raise ValueError("Tutar sütunu sayısal formata çevrilemedi. Lütfen tutar formatını kontrol edin.")
+            # Veri temizleme ve dönüştürme
+            df = self._clean_data(df)
+            
+            # Tevkifat analizi
+            df['tevkifat_riski'] = df['aciklama'].apply(self.data_processor.tevkifat_kontrol)
+            df['detayli_analiz'] = df['aciklama'].apply(
+                lambda x: self.data_processor.tevkifat_kontrol(x, detayli_rapor=True)
+            )
 
             # Dosyayı kaydet
             output_path = f"data/{musteri_id}/{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.name}"
-            df.to_excel(output_path, index=False)
+            if not output_path.endswith('.xlsx'):
+                output_path = output_path + '.xlsx'
+                
+            self.file_handler.save_excel_file(df, output_path)
+            
+            # Mapping'i kaydet
+            self.config_manager.config["column_mappings"][musteri_id] = mapping
+            self.config_manager.save_config()
+            
+            return df
+
+        except Exception as e:
+            logging.error(f"Veri yükleme hatası: {str(e)}\n{traceback.format_exc()}")
+            raise
+
+    def _clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Veri temizleme ve dönüştürme"""
+        try:
+            # Tarih sütununu düzenle
+            df['tarih'] = pd.to_datetime(df['tarih'], format='mixed')
+            
+            # Tutar sütununu düzenle
+            df['tutar'] = pd.to_numeric(
+                df['tutar'].astype(str).str.replace(',', '.'),
+                errors='coerce'
+            )
+            
+            # Metin sütunlarını temizle
+            df['aciklama'] = df['aciklama'].astype(str).apply(
+                lambda x: unicodedata.normalize('NFKD', x).encode('ASCII', 'ignore').decode()
+            )
             
             return df
         except Exception as e:
-            logging.error(f"Veri yükleme hatası: {str(e)}\n{traceback.format_exc()}")
-            st.error(f"Veri yükleme hatası: {str(e)}")
-            return None
+            logging.error(f"Veri temizleme hatası: {str(e)}")
+            raise ValueError(f"Veri temizleme hatası: {str(e)}")
+
+    def analiz_yap(self, musteri_id: str, baslangic_tarih: datetime, bitis_tarih: datetime) -> Optional[pd.DataFrame]:
+        """Tevkifat analizi yap"""
+        try:
+            musteri_klasoru = f"data/{musteri_id}"
+            if not os.path.exists(musteri_klasoru):
+                raise ValueError("Müşteri klasörü bulunamadı!")
+            
+            # En son yüklenen dosyayı bul
+            dosyalar = sorted([f for f in os.listdir(musteri_klasoru) if f.endswith(('.xlsx', '.csv'))])
+            if not dosyalar:
+                raise ValueError("Henüz veri yüklenmemiş!")
+            
+            son_dosya = os.path.join(musteri_klasoru, dosyalar[-1])
+            
+            # Excel engine'i belirterek dosyayı oku
+            if son_dosya.endswith('.xlsx'):
+                df = pd.read_excel(son_dosya, engine='openpyxl')
+            else:
+                df = pd.read_csv(son_dosya)
+            
+            # Analiz için gerekli sütunları geçici olarak yeniden adlandır
+            temp_df = df.copy()
+            column_mapping = {}
+            for col in df.columns:
+                col_lower = col.lower()
+                if col_lower in ['tarih', 'date']:
+                    column_mapping[col] = 'tarih'
+                elif col_lower in ['aciklama', 'açıklama', 'description']:
+                    column_mapping[col] = 'aciklama'
+                elif col_lower in ['tutar', 'amount']:
+                    column_mapping[col] = 'tutar'
+                elif col_lower in ['satıcı ünvanı', 'satici unvani', 'satıcı unvanı', 'satici ünvanı', 'tedarikçi', 'tedarikci']:
+                    column_mapping[col] = 'satici_unvani'
+                elif col_lower in ['fatura no', 'fatura numarası', 'invoice no', 'belge no']:
+                    column_mapping[col] = 'fatura_no'
+            
+            if column_mapping:
+                temp_df = temp_df.rename(columns=column_mapping)
+            
+            # Tarih filtreleme
+            temp_df['tarih'] = pd.to_datetime(temp_df['tarih'])
+            mask = (temp_df['tarih'].dt.date >= baslangic_tarih.date()) & (temp_df['tarih'].dt.date <= bitis_tarih.date())
+            
+            # Orijinal DataFrame'i filtrele
+            filtered_df = df[mask].copy()
+            if filtered_df.empty:
+                return None
+            
+            # Tevkifat analizi için gerekli sütunu kullan
+            aciklama_col = next(col for col, mapped in column_mapping.items() if mapped == 'aciklama')
+            
+            # Önce tevkifat_riski sütununu ekle
+            filtered_df['tevkifat_riski'] = filtered_df[aciklama_col].apply(
+                lambda x: bool(self.data_processor.tevkifat_kontrol(x, detayli_rapor=True))
+            )
+            
+            # Detaylı analiz sonuçlarını ekle
+            analiz_sonuclari = filtered_df[aciklama_col].apply(
+                lambda x: self.data_processor.tevkifat_kontrol(x, detayli_rapor=True)
+            )
+            
+            # Analiz sonuçlarını ayrı sütunlara ekle
+            def extract_risk_info(x):
+                if isinstance(x, dict):
+                    return pd.Series({
+                        'Risk Seviyesi': x.get('uyari_seviyesi', ''),
+                        'Risk Skoru': x.get('risk_skoru', 0),
+                        'Eşleşen Kategoriler': ', '.join(x.get('eslesmeler', {}).keys())
+                    })
+                return pd.Series({'Risk Seviyesi': '', 'Risk Skoru': 0, 'Eşleşen Kategoriler': ''})
+            
+            # Analiz sonuçlarını ekle
+            risk_info = analiz_sonuclari.apply(extract_risk_info)
+            filtered_df = pd.concat([filtered_df, risk_info], axis=1)
+            
+            return filtered_df
+            
+        except Exception as e:
+            logging.error(f"Analiz hatası: {str(e)}\n{traceback.format_exc()}")
+            raise
 
 def main():
     st.set_page_config(page_title="Tevkifat Analiz Sistemi", layout="wide")
     st.title("Tevkifat Analiz Sistemi")
     
-    app = TevkifatApp()
+    analyzer = TevkifatAnalyzer()
     
     # Debug modu
     with st.sidebar:
@@ -139,204 +402,18 @@ def main():
                     st.text_area("Debug Log", f.read(), height=300)
     
     # Ana menü
-    islem = st.sidebar.radio("İşlem Seçin:", 
-                            ["Müşteri Ekle", "Müşteri Sil", "Veri Yükle", "Analiz Yap"])
+    menu_items = ["Müşteri Ekle", "Müşteri Sil", "Veri Yükle", "Analiz Yap"]
+    islem = st.sidebar.radio("İşlem Seçin:", menu_items)
     
-    if islem == "Müşteri Ekle":
-        st.subheader("Yeni Müşteri Ekle")
-        musteri_adi = st.text_input("Müşteri Adı:")
-        if st.button("Ekle") and musteri_adi:
-            musteri_id = app.musteri_ekle(musteri_adi)
-            if musteri_id:
-                st.success(f"Müşteri başarıyla eklendi. ID: {musteri_id}")
+    # İşlem yönlendirme
+    menu_functions = {
+        "Müşteri Ekle": musteri_ekle_view,
+        "Müşteri Sil": musteri_sil_view,
+        "Veri Yükle": veri_yukle_view,
+        "Analiz Yap": analiz_yap_view
+    }
     
-    elif islem == "Müşteri Sil":
-        st.subheader("Müşteri Sil")
-        musteriler = app.config["musteriler"]
-        if musteriler:
-            secilen_musteri = st.selectbox(
-                "Müşteri Seçin:",
-                options=list(musteriler.keys()),
-                format_func=lambda x: f"{x} - {musteriler[x]['ad']}"
-            )
-            if st.button("Sil"):
-                if app.musteri_sil(secilen_musteri):
-                    st.success("Müşteri başarıyla silindi!")
-        else:
-            st.info("Henüz müşteri eklenmemiş.")
-    
-    elif islem == "Veri Yükle":
-        st.subheader("Veri Yükleme")
-        musteriler = app.config["musteriler"]
-        if musteriler:
-            secilen_musteri = st.selectbox(
-                "Müşteri Seçin:",
-                options=list(musteriler.keys()),
-                format_func=lambda x: f"{x} - {musteriler[x]['ad']}"
-            )
-            
-            uploaded_file = st.file_uploader("Excel/CSV Dosyası Seçin", 
-                                           type=['xlsx', 'csv'])
-            
-            if uploaded_file:
-                try:
-                    df_preview = pd.read_excel(uploaded_file) if uploaded_file.name.endswith('.xlsx') else pd.read_csv(uploaded_file)
-                    st.write("Önizleme:", df_preview.head())
-                    
-                    # Sütun eşleştirme
-                    st.subheader("Sütun Eşleştirme")
-                    st.info("""
-                    Lütfen aşağıdaki sütunları eşleştirin:
-                    - tarih: Fatura tarihi sütunu
-                    - aciklama: Fatura açıklaması/detayı sütunu
-                    - tutar: Fatura tutarı sütunu
-                    """)
-                    
-                    mapping = {}
-                    required_columns = ['tarih', 'aciklama', 'tutar']
-                    
-                    # Kayıtlı mapping'i kontrol et
-                    saved_mapping = app.config.get("column_mappings", {}).get(secilen_musteri, {})
-                    
-                    for req_col in required_columns:
-                        default_value = saved_mapping.get(req_col, "")
-                        col_options = [""] + list(df_preview.columns)
-                        default_index = 0 if not default_value else col_options.index(default_value)
-                        
-                        mapping[req_col] = st.selectbox(
-                            f"{req_col} sütununu seçin:",
-                            options=col_options,
-                            index=default_index,
-                            help=f"Lütfen {req_col} için uygun sütunu seçin"
-                        )
-                    
-                    # Tüm sütunlar seçili mi kontrolü
-                    all_columns_selected = all(mapping.values())
-                    
-                    if not all_columns_selected:
-                        st.warning("Lütfen tüm gerekli sütunları eşleştirin!")
-                    
-                    if st.button("Yükle", disabled=not all_columns_selected):
-                        # Mapping'i kaydet
-                        app.config["column_mappings"][secilen_musteri] = mapping
-                        app.save_config()
-                        
-                        # Veriyi yükle
-                        df = app.veri_yukle(secilen_musteri, uploaded_file, mapping)
-                        if df is not None:
-                            st.success("Veri başarıyla yüklendi!")
-                            st.write("Yüklenen veri önizlemesi:", df.head())
-                            
-                except Exception as e:
-                    logging.error(f"Veri yükleme hatası: {str(e)}\n{traceback.format_exc()}")
-                    st.error(f"Veri yükleme hatası: {str(e)}")
-        else:
-            st.info("Henüz müşteri eklenmemiş.")
-    
-    elif islem == "Analiz Yap":
-        st.subheader("Tevkifat Analizi")
-        musteriler = app.config["musteriler"]
-        if musteriler:
-            secilen_musteri = st.selectbox(
-                "Müşteri Seçin:",
-                options=list(musteriler.keys()),
-                format_func=lambda x: f"{x} - {musteriler[x]['ad']}"
-            )
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                baslangic_tarih = st.date_input("Başlangıç Tarihi")
-            with col2:
-                bitis_tarih = st.date_input("Bitiş Tarihi")
-            
-            if st.button("Analiz Et"):
-                try:
-                    with st.spinner('Analiz yapılıyor...'):
-                        musteri_klasoru = f"data/{secilen_musteri}"
-                        tum_veriler = pd.DataFrame()
-                        
-                        # Tüm dosyaları oku ve birleştir
-                        for dosya in os.listdir(musteri_klasoru):
-                            if dosya.endswith(('.xlsx', '.csv')):
-                                df = pd.read_excel(f"{musteri_klasoru}/{dosya}")
-                                tum_veriler = pd.concat([tum_veriler, df])
-                        
-                        if not tum_veriler.empty:
-                            # Tarih filtreleme
-                            tum_veriler['tarih'] = pd.to_datetime(tum_veriler['tarih'])
-                            mask = (tum_veriler['tarih'].dt.date >= baslangic_tarih) & \
-                                   (tum_veriler['tarih'].dt.date <= bitis_tarih)
-                            filtered_df = tum_veriler[mask]
-                            
-                            if not filtered_df.empty:
-                                sonuclar = []
-                                for _, row in filtered_df.iterrows():
-                                    fatura_metni = f"{row['aciklama']} {row['tutar']}"
-                                    analiz = tevkifat_kontrol(fatura_metni, detayli_rapor=True)
-                                    if analiz:
-                                        sonuclar.append({
-                                            'Tarih': row['tarih'].strftime('%Y-%m-%d'),
-                                            'Açıklama': row['aciklama'],
-                                            'Tutar': row['tutar'],
-                                            'Risk Skoru': analiz['risk_skoru'],
-                                            'Uyarı Seviyesi': analiz['uyari_seviyesi'],
-                                            'Eşleşen Kategoriler': ', '.join(analiz['eslesmeler'].keys()),
-                                            'Eşleşen Kelimeler': '; '.join([', '.join(v) for v in analiz['eslesmeler'].values()])
-                                        })
-                                
-                                if sonuclar:
-                                    # Excel dosyası oluştur
-                                    output_file = f"data/{secilen_musteri}/tevkifat_analiz_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-                                    df_sonuc = pd.DataFrame(sonuclar)
-                                    
-                                    # Excel yazıcı oluştur
-                                    with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
-                                        # Analiz sonuçları
-                                        df_sonuc.to_excel(writer, sheet_name='Analiz Sonuçları', index=False)
-                                        
-                                        # Özet bilgiler
-                                        ozet_data = {
-                                            'Metrik': [
-                                                'Toplam Kayıt Sayısı',
-                                                'Risk Tespit Edilen Kayıt Sayısı',
-                                                'Ortalama Risk Skoru',
-                                                'Yüksek Riskli Kayıt Sayısı',
-                                                'Analiz Tarihi',
-                                                'Tarih Aralığı'
-                                            ],
-                                            'Değer': [
-                                                len(filtered_df),
-                                                len(sonuclar),
-                                                round(df_sonuc['Risk Skoru'].mean(), 2),
-                                                len(df_sonuc[df_sonuc['Uyarı Seviyesi'].isin(['Yüksek Risk', 'Çok Yüksek Risk'])]),
-                                                datetime.now().strftime('%Y-%m-%d %H:%M'),
-                                                f"{baslangic_tarih} - {bitis_tarih}"
-                                            ]
-                                        }
-                                        pd.DataFrame(ozet_data).to_excel(writer, sheet_name='Özet', index=False)
-                                    
-                                    # Download butonu
-                                    with open(output_file, 'rb') as f:
-                                        bytes_data = f.read()
-                                    st.download_button(
-                                        label="Analiz Raporunu İndir",
-                                        data=bytes_data,
-                                        file_name=f"tevkifat_analiz_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                    )
-                                    st.success(f"Analiz tamamlandı! {len(sonuclar)} adet risk tespit edildi.")
-                                else:
-                                    st.warning("Seçilen tarih aralığında risk tespit edilmedi.")
-                            else:
-                                st.warning("Seçilen tarih aralığında veri bulunamadı!")
-                        else:
-                            st.warning("Müşteriye ait veri bulunamadı!")
-                            
-                except Exception as e:
-                    logging.error(f"Analiz hatası: {str(e)}\n{traceback.format_exc()}")
-                    st.error(f"Analiz hatası: {str(e)}")
-        else:
-            st.info("Henüz müşteri eklenmemiş.")
+    menu_functions[islem](analyzer)
 
 if __name__ == "__main__":
-    main() 
+    main()
