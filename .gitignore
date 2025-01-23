@@ -37,32 +37,3 @@ ENV/
 debug.log
 data/
 config.json
-
-## Kullanım
-
-1. Müşteri Ekleme:
-   - "Müşteri Ekle" sekmesinden yeni müşteri ekleyin
-   - Her müşteri için otomatik bir klasör oluşturulur
-
-2. Veri Yükleme:
-   - "Veri Yükle" sekmesinden müşteri seçin
-   - Excel/CSV dosyasını yükleyin
-   - Sütunları eşleştirin (tarih, açıklama, tutar)
-
-3. Analiz:
-   - "Analiz Yap" sekmesinden müşteri seçin
-   - Tarih aralığını belirleyin
-   - Analiz sonuçlarını Excel olarak indirin
-
-## Gereksinimler
-
-- Python 3.8+
-- Streamlit
-- Pandas
-- OpenPyXL
-
-## Proje Yapısı
-
-## Lisans
-
-Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için `LICENSE` dosyasına bakın. 
