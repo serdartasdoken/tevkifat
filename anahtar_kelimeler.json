@@ -1,0 +1,152 @@
+{
+    "Yapım İşleri": [
+      "\\binşaat\\b", "\\btadilat\\b", "\\bmühendislik\\b", "\\bproje\\b",
+      "\\byapı denetim\\b", "\\bstatik proje\\b", "\\bşantiye\\b",
+      "\\bbeton\\b", "\\bbetonarme\\b", "\\bprefabrik\\b", "\\bkalıp\\b", "\\bkazı\\b",
+      "\\bdekapaj\\b", "\\bhafriyat\\b", "\\byıkım\\b", "\\bgüçlendirme\\b",
+      "\\bmontaj\\b", "\\bdemontaj\\b", "\\basma tavan\\b", "\\bsıva\\b",
+      "\\bduvar\\b", "\\bçatı\\b", "\\byalıtım\\b", "\\bkaplama\\b"
+    ],
+    "İşgücü Temini": [
+      "\\bişgücü temin\\b", "\\bözel güvenlik\\b", "\\bpersonel kiralama\\b",
+      "\\bordrolu çalışan\\b", "\\bgeçici istihdam\\b", "\\bpersonel destek\\b",
+      "\\btaşeron temin\\b", "\\bbordro hizmetleri\\b", "\\biş gücü kiralama\\b"
+    ],
+    "Temizlik": [
+      "\\btemizlik hizmeti\\b", "\\bhaşere mücadele\\b", "\\bilaçlama\\b",
+      "\\bofis temizliği\\b", "\\bendüstriyel temizlik\\b", "\\bbahçe bakım\\b",
+      "\\bçevre düzenleme\\b", "\\batık toplama\\b", "\\bgeri dönüşüm hizmeti\\b",
+      "\\bçöp bertaraf\\b", "\\bsu arıtma\\b", "\\bçevre temizliği\\b",
+      "\\bkimyasal temizlik\\b", "\\batık su arıtma\\b", "\\byeşil alan bakımı\\b",
+      "\\bhaşere kontrol\\b", "\\bendüstriyel hijyen\\b"
+    ],
+    "Yemek": [
+      "\\byemek servisi\\b", "\\bcatering\\b", "\\btoplu yemek\\b",
+      "\\borganizasyon\\b", "\\bkongre\\b", "\\betkinlik\\b",
+      "\\bikram\\b", "\\bbüfe\\b", "\\bservis\\b", "\\bdüğün\\b",
+      "\\bkokteyl\\b", "\\btabldot\\b", "\\bkumanya\\b",
+      "\\başçılık\\b", "\\bfast food\\b", "\\bkantin\\b",
+      "\\bself servis\\b", "\\baçık büfe\\b", "\\byemek üretim\\b",
+      "\\btoplu yemek servisi\\b", "\\bözel davet\\b", "\\bdüğün catering\\b",
+      "\\betkinlik planlama\\b"
+    ],
+    "Metal ve Geri Dönüşüm": [
+      "\\bhurda\\b", "\\bmetal\\b", "\\batık\\b",
+      "\\bdemir çelik\\b", "\\bhurdacı\\b", "\\bplazma kesim\\b",
+      "\\bcnc kesim\\b", "\\bpaslanmaz boru\\b", "\\bkrom kaplama\\b",
+      "\\bdemir geri dönüşüm\\b", "\\bhurda toplama\\b",
+      "\\bmetal izabe\\b", "\\balüminyum işleme\\b", "\\bhurda ayrıştırma\\b"
+    ],
+    "Baskı ve Tanıtım": [
+      "\\bbaskı\\b", "\\bmatbaa\\b", "\\bbroşür\\b",
+      "\\bkatalog\\b", "\\bafiş\\b", "\\bdijital\\b",
+      "\\bambalaj\\b", "\\betiket\\b", "\\bpromosyon\\b",
+      "\\bkartonpiyer\\b", "\\b3d\\b", "\\bciltleme\\b",
+      "\\bserigrafi\\b", "\\blaminasyon\\b", "\\btipo\\b",
+      "\\bofset\\b", "\\breklamcılık\\b", "\\btabela\\b",
+      "\\bvinil\\b", "\\bgrafik tasarım\\b", "\\blazer\\b",
+      "\\breklam baskı\\b", "\\bpromosyon malzemesi\\b",
+      "\\bkatalog tasarımı\\b", "\\bdijital baskı\\b"
+    ],
+    "Taşımacılık ve Lojistik": [
+      "\\bservis\\b", "\\btaşımacılık\\b", "\\bnakliye\\b",
+      "\\blojistik\\b", "\\bkargo\\b", "\\byük\\b",
+      "\\bdepolama\\b", "\\bgümrükleme\\b", "\\bithalat\\b",
+      "\\btedarik\\b", "\\bforklift\\b", "\\bpersonel\\b",
+      "\\böğrenci\\b", "\\baraç\\b", "\\bfilo\\b",
+      "\\bkurye\\b", "\\bnakliyat\\b", "\\bparsiyel\\b",
+      "\\bkara yolu\\b", "\\bkonteyner\\b", "\\bantrepo\\b",
+      "\\bsevkiyat\\b", "\\bgümrüklü\\b", "\\bhızlı teslimat\\b",
+      "\\blojistik hizmetleri\\b", "\\buluslararası taşımacılık\\b",
+      "\\bdepo yönetimi\\b", "\\baraç filoları\\b", "\\böğrenci taşımacılığı\\b"
+    ],
+    "Danışmanlık ve Finans": [
+      "\\bdanışmanlık\\b", "\\bvergi\\b", "\\byönetim\\b",
+      "\\bdenetim\\b", "\\bfinansal\\b", "\\biso\\b",
+      "\\brisk\\b", "\\biş geliştirme\\b", "\\bhukuk\\b",
+      "\\bmali müşavir\\b", "\\bavukat\\b", "\\bhukuki\\b",
+      "\\bteknik\\b", "\\bgayrimenkul değerleme\\b", "\\bekspertiz\\b",
+      "\\bgayrimenkul\\b", "\\bmuhasebe\\b", "\\bfinans\\b",
+      "\\bdeğerlendirme\\b", "\\byatırım\\b", "\\bteşvik\\b",
+      "\\bihale\\b", "\\bmali müşavirlik\\b", "\\bşirket birleşmeleri\\b",
+      "\\bfinansal raporlama\\b", "\\bkdv danışmanlığı\\b", "\\buluslararası vergi\\b"
+    ],
+    "Makine ve Endüstri": [
+      "\\bmakine\\b", "\\bteçhizat\\b", "\\bteknik\\b",
+      "\\bendüstriyel\\b", "\\barıza\\b", "\\bmontaj\\b",
+      "\\bkalibrasyon\\b", "\\bkurulum\\b", "\\bsanayi\\b",
+      "\\bkompresör\\b", "\\bperiyodik\\b", "\\byedek parça\\b",
+      "\\brevizyon\\b", "\\bbakımı\\b", "\\bonarım\\b",
+      "\\btamir\\b", "\\bcnc\\b", "\\btorna\\b",
+      "\\bendüstriyel robot\\b", "\\benjeksiyon\\b", "\\bkalıp\\b",
+      "\\bendüstriyel makine\\b", "\\bmakine kalibrasyon\\b",
+      "\\büretim hattı\\b", "\\bendüstriyel revizyon\\b"
+    ],
+    "Yazılım ve Teknoloji": [
+      "\\byazılım\\b", "\\bbilişim\\b", "\\be-ticaret\\b",
+      "\\berp\\b", "\\bcrm\\b", "\\bapi\\b",
+      "\\bdijital\\b", "\\byapay zeka\\b", "\\byazılım geliştirme\\b",
+      "\\bbulut\\b", "\\bentegrasyon\\b", "\\bmobil uygulama\\b",
+      "\\bveri analitiği\\b", "\\bweb tasarım\\b", "\\byazılım entegrasyonu\\b",
+      "\\bteknoloji danışmanlığı\\b", "\\bmobil uygulama\\b",
+      "\\bveri analitiği\\b", "\\bweb tasarım\\b"
+    ],
+    "Gayrimenkul": [
+      "\\bGayrimenkul", "\\bemlak\\b", "\\bdanışman\\b",
+      "\\bdeğerleme\\b", "\\bekspertiz\\b", "\\btapu\\b",
+      "\\bkonut\\b", "\\bticari\\b", "\\bkira\\b",
+      "\\bGayrimenkul", "\\bemlak\\b", "\\bdanışman\\b",
+      "\\bdeğerleme\\b", "\\bekspertiz\\b", "\\btapu\\b",
+      "\\bkonut\\b", "\\bticari\\b", "\\bkira\\b",
+      "\\bkira sözleşmesi\\b", "\\bgayrimenkul değerleme\\b",
+      "\\btapu işlemleri\\b", "\\bkonut projeleri\\b", "\\bticari ofis\\b",
+      "\\btaşınmaz yatırım\\b"
+    ],
+    "Genel": [
+      "\\btevkif\\b", "\\btevkifatlı\\b", "\\bkdv'siz\\b",
+      "\\bkdv dahil\\b", "\\b2 nolu kdv\\b", "\\bsorumlu sıfatıyla\\b",
+      "\\bistisnadan vazgeçenler\\b"
+    ],
+    "Özel Gruplar": [
+      "bina tadilat", "metal geri dönüşüm", "yemek servisi", "yapı denetim",
+      "statik proje", "elektrik tesisat", "mekanik tesisat", "zemin etüdü",
+      "yapı ruhsatı", "işgücü temin", "personel temin", "eleman temin",
+      "geçici işçi", "taşeron işçi", "özel güvenlik", "koruma hizmeti",
+      "bekçi hizmeti", "işçi kiralama", "kadro dışı", "danışmanlık personeli",
+      "uzman personel", "ofis temizliği", "endüstriyel temizlik", "bahçe bakım",
+      "çevre düzenleme", "haşere mücadele", "atık toplama", "geri dönüşüm hizmeti",
+      "çöp bertaraf", "su arıtma", "yemek servisi", "toplu yemek",
+      "organizasyon hizmeti", "kongre hizmeti", "etkinlik yönetimi", "ikram hizmeti",
+      "büfe hizmeti", "servis personeli", "düğün organizasyon", "kokteyl hizmeti",
+      "hurda metal", "metal atık", "bakır hurda", "alüminyum hurda",
+      "çinko hurda", "demir hurda", "külçe metal", "metal geri dönüşüm",
+      "hurda alımı", "metal kesim", "metal işleme", "paslanmaz hurda",
+      "broşür baskı", "katalog basım", "afiş basım", "dijital baskı",
+      "ambalaj baskı", "etiket basımı", "promosyon ürün", "servis taşımacılık",
+      "nakliye hizmeti", "lojistik hizmetleri", "kargo hizmeti", "yük taşıma",
+      "depolama hizmeti", "gümrükleme", "ithalat taşımacılık", "tedarik zinciri",
+      "forklift hizmeti", "personel servis", "öğrenci servis", "araç kiralama",
+      "danışmanlık hizmeti", "vergi danışmanlığı", "yönetim danışmanlığı",
+      "denetim hizmeti", "finansal danışmanlık", "iso belgelendirme", "risk analizi",
+      "iş geliştirme", "hukuk danışmanlığı", "makine bakım", "teçhizat bakım",
+      "teknik servis", "endüstriyel bakım", "arıza onarım", "montaj hizmeti",
+      "kalibrasyon", "makine kurulum", "sanayi bakım", "kompresör bakım",
+      "periyodik bakım", "yedek parça", "iş makinesi kiralama", "jeneratör kiralama",
+      "vinç kiralama", "yazılım geliştirme", "web tasarım", "gayrimenkul danışmanlığı",
+      "temel kazısı", "beton döküm işleri", "çelik montaj", "kalıp hazırlığı",
+      "zemin kaplama", "izolasyon malzemesi", "dış cephe kaplama", "bordrolu çalışan",
+      "geçici istihdam", "personel destek", "taşeron temin", "bordro hizmetleri",
+      "iş gücü kiralama", "çevre temizliği", "kimyasal temizlik", "atık su arıtma",
+      "yeşil alan bakımı", "haşere kontrol", "endüstriyel hijyen", "yemek üretim",
+      "toplu yemek servisi", "özel davet", "düğün catering", "etkinlik planlama",
+      "demir geri dönüşüm", "hurda toplama", "metal izabe", "alüminyum işleme",
+      "hurda ayrıştırma", "reklam baskı", "promosyon malzemesi", "katalog tasarımı",
+      "dijital baskı çözümleri", "uluslararası taşımacılık", "depo yönetimi",
+      "araç filoları", "öğrenci taşımacılığı", "mali müşavirlik", "şirket birleşmeleri",
+      "finansal raporlama", "kdv danışmanlığı", "uluslararası vergi", "endüstriyel makine",
+      "makine kalibrasyon", "üretim hattı", "endüstriyel revizyon", "yazılım entegrasyonu",
+      "teknoloji danışmanlığı", "mobil uygulama", "veri analitiği", "web tasarım hizmetleri",
+      "gayrimenkul değerleme", "tapu işlemleri", "konut projeleri", "ticari ofis",
+      "taşınmaz yatırım", "beton santrali", "çatı kaplama"
+    ]
+}
